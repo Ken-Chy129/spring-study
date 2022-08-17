@@ -114,6 +114,10 @@ public abstract class AopConfigUtils {
 		}
 	}
 
+	/**
+	 * cls为 {@link org.springframework.aop.aspectj.annotation.AnnotationAwareAspectJAutoProxyCreator}
+	 * 即注册这样一个后置处理器
+	 */
 	@Nullable
 	private static BeanDefinition registerOrEscalateApcAsRequired(
 			Class<?> cls, BeanDefinitionRegistry registry, @Nullable Object source) {
@@ -136,6 +140,7 @@ public abstract class AopConfigUtils {
 		beanDefinition.setSource(source);
 		beanDefinition.getPropertyValues().add("order", Ordered.HIGHEST_PRECEDENCE);
 		beanDefinition.setRole(BeanDefinition.ROLE_INFRASTRUCTURE);
+		// 走的是DefaultListableBeanFactory类的实现，最终注册一个名字为org.springframework.aop.config.internalAutoProxyCreator的AnnotationAwareAspectJAutoProxyCreator类型的bean
 		registry.registerBeanDefinition(AUTO_PROXY_CREATOR_BEAN_NAME, beanDefinition);
 		return beanDefinition;
 	}

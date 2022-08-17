@@ -119,6 +119,7 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
+// 在导入实现了ImportBeanDefinitionRegistrar接口的类时会自动调用其实现的方法，动态注册其中的Bean
 @Import(AspectJAutoProxyRegistrar.class)
 public @interface EnableAspectJAutoProxy {
 
@@ -126,6 +127,8 @@ public @interface EnableAspectJAutoProxy {
 	 * Indicate whether subclass-based (CGLIB) proxies are to be created as opposed
 	 * to standard Java interface-based proxies. The default is {@code false}.
 	 */
+	// 标记是否直接对目标类进行代理，而不是通过接口产生代理
+	// 或者说，标记是否使用CGLIB动态代理，true，表示使用CGLIB的方式产生代理对象，false，表示使用JDK动态代理
 	boolean proxyTargetClass() default false;
 
 	/**
@@ -134,6 +137,8 @@ public @interface EnableAspectJAutoProxy {
 	 * Off by default, i.e. no guarantees that {@code AopContext} access will work.
 	 * @since 4.3.1
 	 */
+	// 标记代理对象是否应该被aop框架通过AopContext以ThreadLocal的形式暴露出去。
+	// 当一个代理对象需要调用它自己的另外一个代理方法时，这个属性将非常有用。默认是是false，以避免不必要的拦截。
 	boolean exposeProxy() default false;
 
 }

@@ -335,6 +335,9 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 	 */
 	protected Object getCacheKey(Class<?> beanClass, @Nullable String beanName) {
 		if (StringUtils.hasLength(beanName)) {
+			// 确定此Class对象所表示的类或接口是否与指定Class参数所表示的类或接口相同，或者是其超类或超接口。
+			// 如果是，则返回true；否则返回false。
+			// 如果此Class对象表示基元类型，则如果指定的Class参数正好是此Class对象，则此方法返回true；否则返回false。
 			return (FactoryBean.class.isAssignableFrom(beanClass) ?
 					BeanFactory.FACTORY_BEAN_PREFIX + beanName : beanName);
 		}
@@ -363,6 +366,7 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 		}
 
 		// Create proxy if we have advice.
+		// 返回是否要代理给定的bean、要应用的其他建议（例如AOP Alliance拦截器）和顾问。
 		Object[] specificInterceptors = getAdvicesAndAdvisorsForBean(bean.getClass(), beanName, null);
 		if (specificInterceptors != DO_NOT_PROXY) {
 			this.advisedBeans.put(cacheKey, Boolean.TRUE);
