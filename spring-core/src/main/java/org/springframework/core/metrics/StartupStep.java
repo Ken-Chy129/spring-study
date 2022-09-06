@@ -33,6 +33,8 @@ import org.springframework.lang.Nullable;
  *
  * <p>Implementations can track the "execution time" or other metrics for steps.
  *
+ * <p>步骤记录关于在ApplicationStartup期间发生的特定阶段或操作的度量
+ * 
  * @author Brian Clozel
  * @since 5.3
  */

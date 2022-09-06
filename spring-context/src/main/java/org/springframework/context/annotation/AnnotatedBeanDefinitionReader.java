@@ -38,7 +38,10 @@ import org.springframework.util.Assert;
  *
  * <p>This is an alternative to {@link ClassPathBeanDefinitionScanner}, applying
  * the same resolution of annotations but for explicitly registered classes only.
- *
+ * <br>
+ * 方便的适配器，用于编程注册Bean类。
+ * 这是ClassPathBeanDefinitionScanner的替代方案，应用相同的注释分辨率，但仅适用于显式注册的类。
+ * <br>
  * @author Juergen Hoeller
  * @author Chris Beams
  * @author Sam Brannen
@@ -50,10 +53,13 @@ public class AnnotatedBeanDefinitionReader {
 
 	private final BeanDefinitionRegistry registry;
 
+	// bean的名字生成器BeanNameGenerator，可以自定义怎么生成，默认是简单类名首字母小写
 	private BeanNameGenerator beanNameGenerator = AnnotationBeanNameGenerator.INSTANCE;
 
+	// 范围注解的解析器ScopeMetadataResolver，解析出范围，是单例，还是原型
 	private ScopeMetadataResolver scopeMetadataResolver = new AnnotationScopeMetadataResolver();
 
+	// 条件评估器
 	private ConditionEvaluator conditionEvaluator;
 
 
@@ -80,11 +86,15 @@ public class AnnotatedBeanDefinitionReader {
 	 * profiles.
 	 * @since 3.1
 	 */
+	// 对BeanDefinitionRegistry进行了保存和把environment封装进了ConditionEvaluator
+	// ConditionEvaluator可以理解成一个条件过滤器，与@Conditional有关
+	// 如果有了这个注解，就先判断条件成不成立，不成立的话有些操作就不做了。
 	public AnnotatedBeanDefinitionReader(BeanDefinitionRegistry registry, Environment environment) {
 		Assert.notNull(registry, "BeanDefinitionRegistry must not be null");
 		Assert.notNull(environment, "Environment must not be null");
 		this.registry = registry;
 		this.conditionEvaluator = new ConditionEvaluator(registry, environment, null);
+		// 在给定的注册表中注册所有相关的注释后处理器。
 		AnnotationConfigUtils.registerAnnotationConfigProcessors(this.registry);
 	}
 
@@ -290,6 +300,8 @@ public class AnnotatedBeanDefinitionReader {
 	 * Get the Environment from the given registry if possible, otherwise return a new
 	 * StandardEnvironment.
 	 */
+	// 如果BeanDefinitionRegistry是EnvironmentCapable的话就可以直接获取，否则就创建一个标准环境
+	// 其实就是获取一些系统的变量。比如可以配置dev环境，test环境，online环境等等。
 	private static Environment getOrCreateEnvironment(BeanDefinitionRegistry registry) {
 		Assert.notNull(registry, "BeanDefinitionRegistry must not be null");
 		if (registry instanceof EnvironmentCapable) {
