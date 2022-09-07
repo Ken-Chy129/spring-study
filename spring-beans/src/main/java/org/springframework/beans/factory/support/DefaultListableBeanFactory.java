@@ -924,7 +924,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 				if (isFactoryBean(beanName)) {
 					Object bean = getBean(FACTORY_BEAN_PREFIX + beanName);
 					if (bean instanceof SmartFactoryBean<?> smartFactoryBean && smartFactoryBean.isEagerInit()) {
-						// 初始化bean
+						// 尝试从缓存中获取bean
 						getBean(beanName);
 					}
 				}
