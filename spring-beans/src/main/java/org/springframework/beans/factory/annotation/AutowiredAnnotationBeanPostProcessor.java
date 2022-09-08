@@ -349,11 +349,15 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 								"Resolution of declared constructors on bean Class [" + beanClass.getName() +
 								"] from ClassLoader [" + beanClass.getClassLoader() + "] failed", ex);
 					}
+					// 创建一个集合放构造方法
 					List<Constructor<?>> candidates = new ArrayList<>(rawCandidates.length);
+					// 存放必要构造方法（加上了@Autowired注解）
 					Constructor<?> requiredConstructor = null;
+					// 存放默认构造方法
 					Constructor<?> defaultConstructor = null;
 					Constructor<?> primaryConstructor = BeanUtils.findPrimaryConstructor(beanClass);
 					int nonSyntheticConstructors = 0;
+					// 遍历所有的构造器
 					for (Constructor<?> candidate : rawCandidates) {
 						if (!candidate.isSynthetic()) {
 							nonSyntheticConstructors++;
@@ -361,10 +365,20 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 						else if (primaryConstructor != null) {
 							continue;
 						}
+						// 这个方法会拿到构造方法上的注解中的属性
 						MergedAnnotation<?> ann = findAutowiredAnnotation(candidate);
+						/*
+						 * 如果我们在构造方法中加上了@Autowired，会拿到其中的required属性
+						 * 下面如果没有注解会进入第一个if语句
+						 * 如果加了注解会进入第二个if语句，而且加上了@Autowired
+						 * 那么会构造方法赋值给requiredConstructor，并且将构造方法加入candidates集合
+						 * 注意如果存在两个带有@Autowired注解且存在required属性值为true的构造方法会直接报错
+						 */
 						if (ann == null) {
+							// 不是必要构造方法
 							Class<?> userClass = ClassUtils.getUserClass(beanClass);
 							if (userClass != beanClass) {
+								// 如果是代理，则判断原始类的构造函数
 								try {
 									Constructor<?> superCtor =
 											userClass.getDeclaredConstructor(candidate.getParameterTypes());
@@ -376,6 +390,8 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 							}
 						}
 						if (ann != null) {
+							// 出现两个@Autowired且存在一个或一个以上required属性值为true
+							// 即如果有两个或以上的必要构造方法只能都是required=false
 							if (requiredConstructor != null) {
 								throw new BeanCreationException(beanName,
 										"Invalid autowire-marked constructor: " + candidate +
@@ -398,12 +414,18 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 							defaultConstructor = candidate;
 						}
 					}
+					// 如果集合中不为空，存在必要的构造方法（有@Autowired）
+					// 会其中的构造方法赋值给candidateConstructors
+					// 这里如果只有一个构造方法（无默认构造方法）且@Autowired的参数required为false的情况下会有日志提示
 					if (!candidates.isEmpty()) {
 						// Add default constructor to list of optional constructors, as fallback.
+						// 没有required=true的构造方法
 						if (requiredConstructor == null) {
+							// 如果有默认构造方法则加入
 							if (defaultConstructor != null) {
 								candidates.add(defaultConstructor);
 							}
+							// 没有默认构造方法，且只有一个required为false的构造方法则会有提示
 							else if (candidates.size() == 1 && logger.isInfoEnabled()) {
 								logger.info("Inconsistent constructor declaration on bean with name '" + beanName +
 										"': single autowire-marked constructor flagged as optional - " +
@@ -413,17 +435,23 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 						}
 						candidateConstructors = candidates.toArray(new Constructor<?>[0]);
 					}
+					// 以下为没有必要构造函数(不存在被autowired标记的构造方法)的情况
 					else if (rawCandidates.length == 1 && rawCandidates[0].getParameterCount() > 0) {
+						// 如果只有一个构造方法则返回(参数大于0，即非默认构造函数)
 						candidateConstructors = new Constructor<?>[] {rawCandidates[0]};
 					}
 					else if (nonSyntheticConstructors == 2 && primaryConstructor != null &&
 							defaultConstructor != null && !primaryConstructor.equals(defaultConstructor)) {
+						// 如果有两个构造器(含默认构造器)且存在primary设置的构造器就返回此构造器和默认构造方法
 						candidateConstructors = new Constructor<?>[] {primaryConstructor, defaultConstructor};
 					}
 					else if (nonSyntheticConstructors == 1 && primaryConstructor != null) {
+						// 如果有一个构造器且存在primary设置的构造器就返回此构造器
 						candidateConstructors = new Constructor<?>[] {primaryConstructor};
 					}
 					else {
+						// 如果进入此语句代表最终将返回null
+						// 也就是使用默认构造器初始化bean
 						candidateConstructors = new Constructor<?>[0];
 					}
 					this.candidateConstructorsCache.put(beanClass, candidateConstructors);
