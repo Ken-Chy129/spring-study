@@ -129,10 +129,11 @@ class ConstructorResolver {
 		this.beanFactory.initBeanWrapper(bw);
 
 		// 最终使用的构造方法
+		// Spring会通过一个for循环来遍历构造器, 每找到一个更加合适的构造器时, 都会覆盖这个变量的值
 		Constructor<?> constructorToUse = null;
-		// 参数的封装对象
+		// 存储原始的参数以及转换后的参数
 		ArgumentsHolder argsHolderToUse = null;
-		// 同样存放的参数
+		// 存储真正用来创建对象的参数,由argsHolderToUse中得到的
 		Object[] argsToUse = null;
 
 		// 1. 解析构造函数参数
@@ -236,14 +237,14 @@ class ConstructorResolver {
 				// constructorToUse != null 说明找到了构造函数
 				// argsToUse != null 说明参数已经赋值
 				// argsToUse.length > parameterCount  
-				// 即已经找到适配的构造函数(可能不是最终的，但参数数量一定相同), 预选构造函数的参数数量 大于 当前构造函数的数量，可以直接break，因为按照参数数量降序排序，这里如果小于就没有必要继续比较下去
+				// 即已经找到适配的构造函数(可能不是最终的，但参数数量一定相同), 预选构造函数的参数数量大于当前构造函数的数量，可以直接break，因为按照参数数量降序排序，之前确定的构造函数肯定要比后面的更合适，如果参数数量相等还有判断差异性的必要，如果已经小于了那么从这往后的构造器显然都没有之前的合适
 				if (constructorToUse != null && argsToUse != null && argsToUse.length > parameterCount) {
 					// Already found greedy constructor that can be satisfied ->
 					// do not look any further, there are only less greedy constructors left.
 					break;
 				}
 				if (parameterCount < minNrOfArgs) {
-					// 参数数量不相等,跳过
+					// 参数数量小于最小限制,跳过
 					continue;
 				}
 				
@@ -253,21 +254,22 @@ class ConstructorResolver {
 				// 如果构造函数存在参数，resolvedValues 是上面解析后的构造函数，有参则根据值构造对应参数类型的参数
 				if (resolvedValues != null) {
 					try {
-						// 获取参数名称
-						// 从 @ConstructorProperties 注解上获取参数名称
+						// 去拿到参数列表的名称,如果构造方法上加入了ConstructorProperties注解,那么说明我们参数名称数组,如果没有这个注解,那么次数paramNames为空的
 						String[] paramNames = ConstructorPropertiesChecker.evaluate(candidate, parameterCount);
 						if (paramNames == null) {
+							// 这里为空则代表我们没有通过注解去自定义参数名称,则通过ParameterNameDiscoverer去解析拿到构造器的参数名称列表
 							ParameterNameDiscoverer pnd = this.beanFactory.getParameterNameDiscoverer();
 							if (pnd != null) {
+								// 解析拿到参数名称列表
 								paramNames = pnd.getParameterNames(candidate);
 							}
 						}
-						// 根据类型和数据类型创建 参数持有者
-						// 这里会调用 DefaultListableBeanFactory#resolveDependency 方法来解析依赖关系
+						// 此处会去获取这些参数名称的参数值,如果是自动注入的就会通过getBean获取,当前这种构造器注入的情况如果循环依赖则会报错的. 这里我们只需要知道,此处将构造器需要的参数值拿出来后并封装到了argsHolder中去.当然如果你构造器里面给个Integer的参数,那肯定是会报错的,因为这里面会去Spring容器中拿这个Integer,结果呢,肯定是NoSuchBeanDefinitionException了
 						argsHolder = createArgumentArray(beanName, mbd, resolvedValues, bw, paramTypes, paramNames,
 								getUserDeclaredConstructor(candidate), autowiring, candidates.length == 1);
 					}
 					catch (UnsatisfiedDependencyException ex) {
+						// 当一个bean依赖于其他bean或bean工厂定义中未指定的简单属性时，抛出异常，尽管启用了依赖项检查。
 						if (logger.isTraceEnabled()) {
 							logger.trace("Ignoring constructor [" + candidate + "] of bean '" + beanName + "': " + ex);
 						}
@@ -282,7 +284,6 @@ class ConstructorResolver {
 				else {
 					// Explicit arguments given -> arguments length must match exactly.
 					// 如果构造函数为默认构造函数，没有参数，如果参数不完全一致则跳过
-					// Explicit arguments given -> arguments length must match exactly.
 					if (parameterCount != explicitArgs.length) {
 						continue;
 					}
@@ -290,11 +291,16 @@ class ConstructorResolver {
 					argsHolder = new ArgumentsHolder(explicitArgs);
 				}
 
-				// 探测是否有不确定性的构造函数存在，例如不同构造函数的参数为父子关系
+				// 当到达这里的时候,至此我们拿到了构造器和构造器需要的参数和值，在这里去结算前面定义的那个差异值
+				// isLenientConstructorResolution意思是是否为宽松的模式,为true的时候是宽松,false的时候是严格
+				// 这个差异值越小越那就说明越合适
 				int typeDiffWeight = (mbd.isLenientConstructorResolution() ?
 						argsHolder.getTypeDifferenceWeight(paramTypes) : argsHolder.getAssignabilityWeight(paramTypes));
-				// Choose this constructor if it represents the closest match.
-				// 如果他是当前最接近匹配则选择作为构造函数，因为可能有多个构造函数都同时满足,比如构造函数参数类型全是 Object，选择最合适的（typeDiffWeight 最小的）作为最终构造函数
+				// 如果本次计算到的差异值比上一次获取到的差异值小,那么就需要做这几件事
+				// 1.设置constructorToUse为当前的这个构造器
+				// 2、设置参数和参数值
+				// 3、给差异值赋值为当前计算出来的差异值
+				// 4、清空有歧义的集合(因为此时我们已经得到了更合适的构造器,所以有歧义的构造器里面保存的构造器已经没有存在的意义了)
 				if (typeDiffWeight < minTypeDiffWeight) {
 					constructorToUse = candidate;
 					argsHolderToUse = argsHolder;
