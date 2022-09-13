@@ -1830,6 +1830,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 					if (StringUtils.hasLength(initMethodName) &&
 							!(isInitializingBean && "afterPropertiesSet".equals(initMethodName)) &&
 							!mbd.hasAnyExternallyManagedInitMethod(initMethodName)) {
+						// 进一步查看该方法的源码，可以发现init-method方法中指定的方法是通过反射实现
 						invokeCustomInitMethod(beanName, bean, mbd, initMethodName);
 					}
 				}

@@ -584,6 +584,7 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 		// Actually destroy the bean now...
 		if (bean != null) {
 			try {
+				// 真正销毁的地方，会调用到DisposableBeanAdapter中的destroy()方法
 				bean.destroy();
 			}
 			catch (Throwable ex) {

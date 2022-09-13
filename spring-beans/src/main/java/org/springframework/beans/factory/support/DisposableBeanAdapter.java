@@ -187,7 +187,10 @@ class DisposableBeanAdapter implements DisposableBean, Runnable, Serializable {
 	@Override
 	public void destroy() {
 		if (!CollectionUtils.isEmpty(this.beanPostProcessors)) {
+			// 遍历所有DestructionAwareBeanPostProcessor后置处理器
 			for (DestructionAwareBeanPostProcessor processor : this.beanPostProcessors) {
+				// 调用其中的方法postProcessBeforeDestruction方法
+				// InitDestroyAnnotationBeanPostProcessor是其中一个实现，其定义了对@PreDestroy注解的处理
 				processor.postProcessBeforeDestruction(this.bean, this.beanName);
 			}
 		}
@@ -197,6 +200,7 @@ class DisposableBeanAdapter implements DisposableBean, Runnable, Serializable {
 				logger.trace("Invoking destroy() on bean with name '" + this.beanName + "'");
 			}
 			try {
+				// 调用DisposableBean接口的destroy方法
 				((DisposableBean) this.bean).destroy();
 			}
 			catch (Throwable ex) {
@@ -228,11 +232,13 @@ class DisposableBeanAdapter implements DisposableBean, Runnable, Serializable {
 			}
 		}
 		else if (this.destroyMethods != null) {
+			// 如果配置了destroyMethod，则调用
 			for (Method destroyMethod : this.destroyMethods) {
 				invokeCustomDestroyMethod(destroyMethod);
 			}
 		}
 		else if (this.destroyMethodNames != null) {
+			// 设置了destroyMethodNames，则通过name找到方法进行调用
 			for (String destroyMethodName: this.destroyMethodNames) {
 				Method destroyMethod = determineDestroyMethod(destroyMethodName);
 				if (destroyMethod != null) {

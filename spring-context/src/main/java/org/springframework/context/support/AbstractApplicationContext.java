@@ -1100,11 +1100,13 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	@SuppressWarnings("deprecation")
 	protected void doClose() {
 		// Check whether an actual close attempt is necessary...
+		// 检查上下文是否处于激活状态
 		if (this.active.get() && this.closed.compareAndSet(false, true)) {
 			if (logger.isDebugEnabled()) {
 				logger.debug("Closing " + this);
 			}
 
+			// 发布上下文已关闭事件 ContextClosedEvent
 			try {
 				// Publish shutdown event.
 				publishEvent(new ContextClosedEvent(this));
@@ -1114,6 +1116,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 			}
 
 			// Stop all Lifecycle beans, to avoid delays during individual destruction.
+			// 调用生命周期管理器的 onClose() 方法，终止对容器中各个bean的生命周期管理
 			if (this.lifecycleProcessor != null) {
 				try {
 					this.lifecycleProcessor.onClose();
@@ -1124,21 +1127,26 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 			}
 
 			// Destroy all cached singletons in the context's BeanFactory.
+			// 销毁容器中所有的（单例）bean
 			destroyBeans();
 
 			// Close the state of this context itself.
+			// 关闭内置的beanFactory
 			closeBeanFactory();
 
 			// Let subclasses do some final clean-up if they wish...
+			// 预留的扩展点，在关闭beanFactory后做一些额外操作
 			onClose();
 
 			// Reset local application listeners to pre-refresh state.
+			// 重置存储监听器的2个成员变量
 			if (this.earlyApplicationListeners != null) {
 				this.applicationListeners.clear();
 				this.applicationListeners.addAll(this.earlyApplicationListeners);
 			}
 
 			// Switch to inactive.
+			// 设置上下文的激活状态为false
 			this.active.set(false);
 		}
 	}
